@@ -1,0 +1,49 @@
+RÉSONANCE — installation sur ton téléphone
+==========================================
+
+Une PWA doit être servie en HTTPS pour être installable. Ouvrir index.html
+directement depuis le téléphone (fichier local) NE permet PAS l'installation
+ni le mode hors-ligne. Il faut d'abord mettre le dossier en ligne. Trois options,
+de la plus simple à la plus technique.
+
+
+OPTION 1 — Netlify Drop (le plus rapide, gratuit, aucun compte requis au départ)
+--------------------------------------------------------------------------------
+1. Va sur https://app.netlify.com/drop depuis un ordinateur.
+2. Glisse-dépose le DOSSIER "resonance" entier dans la zone.
+3. Netlify génère une adresse du type https://xxxx.netlify.app
+4. Ouvre cette adresse sur ton téléphone (voir "Installer" plus bas).
+
+
+OPTION 2 — GitHub Pages (gratuit, adresse stable)
+-------------------------------------------------
+1. Crée un dépôt GitHub, dépose les fichiers du dossier à la racine.
+2. Settings > Pages > Source : branche main, dossier /root.
+3. Ton app sera sur https://TONPSEUDO.github.io/NOM-DU-DEPOT/
+
+
+OPTION 3 — Ton propre hébergement
+---------------------------------
+Dépose les fichiers dans un dossier servi en HTTPS. C'est tout.
+
+
+INSTALLER L'APP UNE FOIS EN LIGNE
+---------------------------------
+Android (Chrome) : menu ... > "Ajouter à l'écran d'accueil" ou
+                   bannière "Installer l'application".
+iPhone (Safari)  : bouton Partager > "Sur l'écran d'accueil".
+
+Après installation elle s'ouvre en plein écran, avec son icône, et fonctionne
+hors-ligne (sauf le tout premier chargement qui télécharge les polices).
+
+
+CONTENU DU DOSSIER
+------------------
+index.html               l'application complète
+manifest.webmanifest     métadonnées d'installation
+sw.js                    service worker (hors-ligne)
+icon-192/512.png         icônes
+icon-512-maskable.png    icône adaptative Android
+apple-touch-icon.png     icône iOS
+
+Ne renomme pas les fichiers, les chemins sont relatifs.
