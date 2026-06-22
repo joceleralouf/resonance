@@ -161,7 +161,6 @@
 
   <div class="stage" id="stage">
     <div class="orb-wrap">
-      <canvas id="viz"></canvas>
       <svg class="breathRing" viewBox="0 0 250 250"><circle class="track" cx="125" cy="125" r="110"/><circle class="prog" id="bring" cx="125" cy="125" r="110"/></svg>
       <div class="orb" id="orb"><div class="orb-in"><div class="bphase" id="bphase">prêt</div><div class="bcount" id="bcount"></div></div></div>
     </div>
@@ -277,10 +276,10 @@ const PROGRAMS={
 let catKey="solfege",idx=4,playing=false,ondesMode="casque",ambKey="none",breathKey="calme",cueMode="breath";
 let wakeOn=false,hapticOn=false;
 let progKey=null,progStep=0,progStepTimer=null;
-let ctx,master,analyser,toneBus,ambBus,cueBus,CUEBUF;
+let ctx,master,toneBus,ambBus,cueBus,CUEBUF;
 let WHITE,PINK,BROWN,curGlow="#e8c77a";
 let toneNodes=[],curAmb=null,breathTimer=null,breathTick=null,countdownTimer=null,timerEnd=0,sessionStart=0;
-let wakeLock=null,silentAudio=null,rafId=null,vizAmp=0;
+let wakeLock=null;
 const RING=691,$=id=>document.getElementById(id),app=$("app");
 
 /* ===================== Persistance (sûre) ===================== */
@@ -403,7 +402,6 @@ function ensureCtx(){
   if(ctx)return;
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   master=ctx.createGain();master.gain.value=0.72;master.connect(ctx.destination);
-  analyser=ctx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.82;master.connect(analyser);
   toneBus=ctx.createGain();toneBus.gain.value=0;toneBus.connect(master);
   ambBus=ctx.createGain();ambBus.gain.value=0;ambBus.connect(master);
   cueBus=ctx.createGain();cueBus.gain.value=cueVol();cueBus.connect(master);
@@ -547,29 +545,8 @@ function armCountdown(sec){
 }
 function clearCountdown(){clearInterval(countdownTimer);$("countdown").textContent="";}
 
-/* ===================== Visualisation réactive ===================== */
-const cv=$("viz"),cx=cv.getContext("2d");let td,lastViz=0;
-function sizeCanvas(){const r=cv.getBoundingClientRect(),dpr=Math.min(1.5,window.devicePixelRatio||1);cv.width=r.width*dpr;cv.height=r.height*dpr;cx.setTransform(dpr,0,0,dpr,0,0);}
-function hexRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255];}
-function startViz(){if(rafId)return;td=new Uint8Array(analyser.fftSize);loopViz(0);}
-function loopViz(ts){
-  if(!playing){cx.clearRect(0,0,cv.clientWidth,cv.clientHeight);rafId=null;return;}
-  rafId=requestAnimationFrame(loopViz);
-  if(ts-lastViz<40)return;lastViz=ts;
-  analyser.getByteTimeDomainData(td);
-  let sum=0;for(let i=0;i<td.length;i++){const x=(td[i]-128)/128;sum+=x*x;}
-  const rms=Math.sqrt(sum/td.length);vizAmp+=(rms-vizAmp)*0.15;
-  const w=cv.clientWidth,h=cv.clientHeight,cxp=w/2,cyp=h/2;
-  cx.clearRect(0,0,w,h);
-  const [r,g,b]=hexRgb(curGlow);
-  // halo simple (cercle semi-transparent, sans dégradé recalculé)
-  cx.fillStyle=`rgba(${r},${g},${b},${0.06+vizAmp*0.18})`;
-  cx.beginPath();cx.arc(cxp,cyp,92+vizAmp*120,0,7);cx.fill();
-  // anneau réactif
-  cx.beginPath();const ringR=104,N=40,step=(td.length/N)|0;
-  for(let i=0;i<=N;i++){const a=i/N*Math.PI*2,s=td[(i*step)%td.length],off=(s-128)/128*15*(0.4+vizAmp*2),rr=ringR+off,x=cxp+Math.cos(a)*rr,y=cyp+Math.sin(a)*rr;i?cx.lineTo(x,y):cx.moveTo(x,y);}
-  cx.closePath();cx.strokeStyle=`rgba(${r},${g},${b},${0.18+vizAmp*0.3})`;cx.lineWidth=1.5;cx.stroke();
-}
+/* visualisation réactive retirée : trop de charge sur le fil principal, cause de craquements */
+function startViz(){}
 
 /* ===================== Écran allumé / média / silencieux ===================== */
 async function reqWake(){if(!wakeOn||!('wakeLock'in navigator))return;try{wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
@@ -612,7 +589,6 @@ applySaved();
 buildTabs();buildMode();buildAmb();buildBreath();buildCue();buildTimers();buildPrograms();
 if(progKey)selectProgram(progKey);else paint();
 updateStats();stopBreath();
-window.addEventListener('resize',sizeCanvas);sizeCanvas();
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
