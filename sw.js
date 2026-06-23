@@ -1,4 +1,4 @@
-const CACHE = 'resonance-v12';
+const CACHE = 'resonance-v17';
 const ASSETS = [
   './',
   './index.html',
