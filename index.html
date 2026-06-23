@@ -273,6 +273,11 @@ const CATS={
     {f:174,n:"Ancrage",d:"Soulagement, sécurité"},{f:285,n:"Régénération",d:"Récupération"},{f:396,n:"Libération",d:"Relâcher la peur"},
     {f:417,n:"Changement",d:"Transitions"},{f:528,n:"Réparation",d:"Apaisement, dite \"fréquence de l'amour\""},{f:639,n:"Lien",d:"Relations, harmonie"},
     {f:741,n:"Expression",d:"Clarté mentale"},{f:852,n:"Intuition",d:"Retour à soi"},{f:963,n:"Éveil",d:"Conscience"}]},
+  graves:{label:"Graves",glow:"#c98a6a",soft:"rgba(201,138,106,0.30)",type:"tone",items:[
+    {f:40,n:"Tellurique",d:"Vibration très profonde, ancrage"},{f:55,n:"Socle",d:"Grave dense"},
+    {f:72,n:"Racine",d:"Enracinement"},{f:96,n:"Assise",d:"Stabilité, calme"},
+    {f:110,n:"Chambre",d:"Résonance ancienne, apaisement"},{f:136,n:"OM",d:"Fréquence de l'Om, méditation"},
+    {f:160,n:"Bourdon",d:"Drone chaud et grave"}]},
   ondes:{label:"Ondes",glow:"#79c7d9",soft:"rgba(121,199,217,0.30)",type:"binaural",carrier:200,items:[
     {f:2,n:"Delta",d:"Sommeil profond"},{f:6,n:"Theta",d:"Méditation, créativité"},{f:10,n:"Alpha",d:"Détente, calme alerte"},
     {f:18,n:"Beta",d:"Concentration"},{f:40,n:"Gamma",d:"Focus intense"}]},
@@ -356,7 +361,7 @@ function paint(){
   $("pname").textContent=c.type==="binaural"?it.n+" · "+it.f+" Hz":it.n;
   $("pdesc").textContent=it.d;
   $("modeRow").style.display=c.type==="binaural"?"flex":"none";
-  $("note").textContent=(c.type==="binaural"&&ondesMode==="casque")?"Casque indispensable : l'effet naît de l'écart entre les deux oreilles.":"Écouteurs recommandés pour une écoute pleine.";
+  $("note").textContent=catKey==="graves"?"Les graves profonds demandent un casque ou une bonne enceinte ; les haut-parleurs de téléphone les restituent mal.":(c.type==="binaural"&&ondesMode==="casque")?"Casque indispensable : l'effet naît de l'écart entre les deux oreilles.":"Écouteurs recommandés pour une écoute pleine.";
   $("chips").style.display=c.type==="none"?"none":"flex";
   $("chips").innerHTML=c.items.map((x,i)=>`<button class="chip ${i===idx?'on':''}" data-i="${i}">${c.type==="noise"?x.n:(c.type==="binaural"?x.n:x.f+" Hz")}</button>`).join("");
   $("chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{idx=+b.dataset.i;paint();saveSettings();if(playing&&!progKey)restartTone();});
@@ -525,7 +530,7 @@ function startTone(){
   const c=CATS[catKey],it=c.items[idx];toneNodes=[];
   if(c.type==="none"){return;}
   if(c.type==="tone"){
-    const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=it.f;g.gain.value=0.6;o.connect(g).connect(toneBus);o.start();toneNodes.push(o);
+    const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=it.f;g.gain.value=it.f<150?0.9:0.6;o.connect(g).connect(toneBus);o.start();toneNodes.push(o);
   }else if(c.type==="binaural"){
     if(ondesMode==="casque"){[[-1,c.carrier],[1,c.carrier+it.f]].forEach(([pan,fr])=>{const o=ctx.createOscillator(),pn=ctx.createStereoPanner(),g=ctx.createGain();o.type="sine";o.frequency.value=fr;pn.pan.value=pan;g.gain.value=0.5;o.connect(g).connect(pn).connect(toneBus);o.start();toneNodes.push(o);});}
     else{const o=ctx.createOscillator(),amp=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain();o.type="sine";o.frequency.value=c.carrier;amp.gain.value=0.5;lfo.type="sine";lfo.frequency.value=it.f;lg.gain.value=0.5;lfo.connect(lg).connect(amp.gain);o.connect(amp).connect(toneBus);o.start();lfo.start();toneNodes.push(o,lfo);}
