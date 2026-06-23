@@ -67,6 +67,23 @@
   #ambfx.fx-stream::after{background:repeating-linear-gradient(101deg, transparent 0 60px, rgba(120,190,200,.05) 60px 64px);animation:streamB 2.4s linear infinite}
   @keyframes streamA{from{transform:translateX(0)}to{transform:translateX(42px)}}
   @keyframes streamB{from{transform:translateX(0)}to{transform:translateX(64px)}}
+  /* Orage */
+  #ambfx.fx-storm::before{background:repeating-linear-gradient(76deg, transparent 0 13px, rgba(150,170,205,.10) 13px 14px);animation:rainA .55s linear infinite}
+  #ambfx.fx-storm::after{background:radial-gradient(60% 50% at 50% 30%, rgba(220,230,255,.0), transparent);animation:flash 9s ease-out infinite}
+  @keyframes flash{0%,93%,100%{opacity:0;background:radial-gradient(60% 50% at 50% 30%, rgba(220,230,255,0), transparent)}94%{opacity:1;background:radial-gradient(70% 60% at 50% 25%, rgba(225,232,255,.5), transparent 70%)}96%{opacity:.2}97%{opacity:.8}98%{opacity:0}}
+  /* Nuit */
+  #ambfx.fx-night::before{background:radial-gradient(120% 90% at 50% 0%, rgba(30,40,90,.35), transparent 70%);animation:nightpulse 8s ease-in-out infinite alternate}
+  #ambfx.fx-night::after{background:radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.7), transparent),radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,.5), transparent),radial-gradient(1.5px 1.5px at 45% 60%, rgba(255,255,255,.6), transparent),radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,.5), transparent);animation:twinkle 4s ease-in-out infinite alternate}
+  @keyframes nightpulse{from{opacity:.7}to{opacity:1}}
+  @keyframes twinkle{from{opacity:.3}to{opacity:.9}}
+  /* Cœur */
+  #ambfx.fx-heart::before{background:radial-gradient(60% 50% at 50% 55%, rgba(200,70,80,.22), transparent 65%);animation:heartbeat 1s ease-out infinite}
+  @keyframes heartbeat{0%{transform:scale(1);opacity:.55}8%{transform:scale(1.06);opacity:.85}16%{transform:scale(1);opacity:.5}28%{transform:scale(1.04);opacity:.7}40%,100%{transform:scale(1);opacity:.45}}
+  /* Ventilateur */
+  #ambfx.fx-fan::before{background:repeating-linear-gradient(92deg, transparent 0 70px, rgba(190,200,215,.05) 70px 75px);animation:windA 4.5s linear infinite}
+  /* Café */
+  #ambfx.fx-cafe::before{background:linear-gradient(to top, rgba(150,100,60,.18), transparent 55%);animation:oceanA 9s ease-in-out infinite alternate}
+  #ambfx.fx-cafe::after{background:radial-gradient(50% 40% at 50% 100%, rgba(190,140,80,.14), transparent 70%);animation:nightpulse 6s ease-in-out infinite alternate}
   @media (prefers-reduced-motion:reduce){#ambfx::before,#ambfx::after{animation:none!important}}
 
   .app{width:100%;max-width:448px;padding:calc(18px + env(safe-area-inset-top)) 20px calc(34px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
@@ -224,6 +241,10 @@
         <div class="tabs" id="tabs"></div>
         <div class="seg" id="modeRow" style="display:none"></div>
         <div class="chips" id="chips" style="margin-top:12px"></div>
+        <div id="freeRow" style="display:none;margin-top:14px">
+          <input type="range" id="freeFreq" min="30" max="1000" value="220" style="width:100%">
+          <div style="display:flex;justify-content:space-between;font-size:11px;opacity:.5;margin-top:4px"><span>30 Hz</span><span>1000 Hz</span></div>
+        </div>
       </div>
       <div class="sec">
         <div class="sec-h">Ambiance de fond</div>
@@ -279,13 +300,14 @@ const CATS={
     {f:72,n:"Racine",d:"Enracinement"},{f:96,n:"Assise",d:"Stabilité, calme"},
     {f:110,n:"Chambre",d:"Résonance ancienne, apaisement"},{f:136,n:"OM",d:"Fréquence de l'Om, méditation"},
     {f:160,n:"Bourdon",d:"Drone chaud et grave"}]},
+  libre:{label:"Libre",glow:"#b0a0d8",soft:"rgba(176,160,216,0.30)",type:"free",items:[{f:220,n:"Accord libre",d:"Choisis ta fréquence exacte au curseur"}]},
   ondes:{label:"Ondes",glow:"#79c7d9",soft:"rgba(121,199,217,0.30)",type:"binaural",carrier:200,items:[
     {f:2,n:"Delta",d:"Sommeil profond"},{f:6,n:"Theta",d:"Méditation, créativité"},{f:10,n:"Alpha",d:"Détente, calme alerte"},
     {f:18,n:"Beta",d:"Concentration"},{f:40,n:"Gamma",d:"Focus intense"}]},
   bruits:{label:"Bruits",glow:"#a79bd9",soft:"rgba(167,155,217,0.30)",type:"noise",items:[
     {f:"white",n:"Bruit blanc",d:"Masque les bruits parasites"},{f:"pink",n:"Bruit rose",d:"Détente, endormissement"},{f:"brown",n:"Bruit brun",d:"Grave, enveloppant"}]}
 };
-const AMB=[{k:"none",n:"Aucune"},{k:"rain",n:"Pluie"},{k:"ocean",n:"Océan"},{k:"wind",n:"Vent"},{k:"fire",n:"Feu"},{k:"stream",n:"Ruisseau"}];
+const AMB=[{k:"none",n:"Aucune"},{k:"rain",n:"Pluie"},{k:"ocean",n:"Océan"},{k:"wind",n:"Vent"},{k:"fire",n:"Feu"},{k:"stream",n:"Ruisseau"},{k:"storm",n:"Orage"},{k:"night",n:"Nuit"},{k:"heart",n:"Cœur"},{k:"fan",n:"Ventilateur"},{k:"cafe",n:"Café"}];
 const BREATH={
   calme:{n:"Calme 4-6",seq:[["inspire",4],["expire",6]]},
   coherence:{n:"Cohérence 5-5",seq:[["inspire",5],["expire",5]]},
@@ -308,16 +330,20 @@ const PROGRAMS={
     {t:600,cat:"ondes",f:6,mode:"casque",amb:"fire",breath:"box",lab:"Theta profond"}]},
   antistress:{n:"Anti-stress",glow:"#7fc7a8",desc:"528 Hz, pluie et 4-7-8",steps:[
     {t:120,cat:"ondes",f:10,mode:"casque",amb:"rain",breath:"sommeil",lab:"Apaisement"},
-    {t:480,cat:"solfege",f:528,amb:"rain",breath:"calme",lab:"528 Hz, réparation"}]}
+    {t:480,cat:"solfege",f:528,amb:"rain",breath:"calme",lab:"528 Hz, réparation"}]},
+  anxiete:{n:"Anxiété",glow:"#88c0a0",desc:"Ralentir le souffle, apaiser le système nerveux",steps:[
+    {t:180,cat:"ondes",f:10,mode:"casque",amb:"rain",breath:"coherence",lab:"Cohérence cardiaque"},
+    {t:300,cat:"solfege",f:396,amb:"rain",breath:"sommeil",lab:"396 Hz, relâcher les tensions"},
+    {t:180,cat:"ondes",f:6,mode:"casque",amb:"ocean",breath:"calme",lab:"Theta, apaisement profond"}]}
 };
 
 /* ===================== État ===================== */
-let catKey="solfege",idx=4,playing=false,ondesMode="casque",ambKey="none",breathKey="calme",cueMode="soft";
+let catKey="solfege",idx=4,playing=false,ondesMode="casque",ambKeys=[],breathKey="calme",cueMode="soft",freeFreq=220;
 let wakeOn=false;
 let progKey=null,progStep=0,progStepTimer=null;
 let ctx,master,shaper,toneBus,ambBus,cueBus;
 let WHITE,PINK,BROWN,curGlow="#e8c77a";
-let toneNodes=[],curAmb=null,breathTimer=null,breathTick=null,countdownTimer=null,timerEnd=0,sessionStart=0,bowlTimer=null;
+let toneNodes=[],ambActive={},breathTimer=null,breathTick=null,countdownTimer=null,timerEnd=0,sessionStart=0,bowlTimer=null;
 let wakeLock=null;
 const RING=691,$=id=>document.getElementById(id),app=$("app");
 
@@ -325,8 +351,8 @@ const RING=691,$=id=>document.getElementById(id),app=$("app");
 const SKEY="resonance.set.v1",STKEY="resonance.stats.v1";
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-function saveSettings(){lsSet(SKEY,{catKey,idx,ondesMode,ambKey,breathKey,cueMode,progKey,wakeOn,
-  vol:$("vol").value,volAmb:$("volAmb").value,volCue:$("volCue").value,ambRate:$("ambRate").value,
+function saveSettings(){lsSet(SKEY,{catKey,idx,ondesMode,ambKeys,breathKey,cueMode,progKey,wakeOn,
+  vol:$("vol").value,volAmb:$("volAmb").value,volCue:$("volCue").value,ambRate:$("ambRate").value,freeFreq,
   bStart:$("tgStart").classList.contains("on"),bEnd:$("tgEnd").classList.contains("on"),bBowls:$("tgBowls").classList.contains("on")});}
 
 /* ===================== Statistiques ===================== */
@@ -354,16 +380,18 @@ function updateStats(){
 /* ===================== Rendu UI ===================== */
 function setGlow(c,s){curGlow=c;app.style.setProperty('--glow',c);app.style.setProperty('--glow-soft',s);document.documentElement.style.setProperty('--glow',c);document.documentElement.style.setProperty('--glow-soft',s);}
 function paint(){
-  const c=CATS[catKey],it=c.items[idx];
+  const c=CATS[catKey];if(idx>c.items.length-1)idx=0;const it=c.items[idx];
   if(!progKey)setGlow(c.glow,c.soft);
-  if(c.type==="none"){const a=AMB.find(x=>x.k===ambKey);$("freq").innerHTML=(a&&a.k!=="none")?a.n:"Souffle";}
+  if(c.type==="none"){const a=AMB.find(x=>x.k===ambKeys[0]);$("freq").innerHTML=a?a.n:"Souffle";}
   else if(c.type==="noise"){$("freq").innerHTML=it.n.replace("Bruit ","");}
+  else if(c.type==="free"){$("freq").innerHTML=freeFreq+'<small>Hz</small>';}
   else{$("freq").innerHTML=it.f+'<small>Hz</small>';}
   $("pname").textContent=c.type==="binaural"?it.n+" · "+it.f+" Hz":it.n;
   $("pdesc").textContent=it.d;
   $("modeRow").style.display=c.type==="binaural"?"flex":"none";
-  $("note").textContent=catKey==="graves"?"Les graves profonds demandent un casque ou une bonne enceinte ; les haut-parleurs de téléphone les restituent mal.":(c.type==="binaural"&&ondesMode==="casque")?"Casque indispensable : l'effet naît de l'écart entre les deux oreilles.":"Écouteurs recommandés pour une écoute pleine.";
-  $("chips").style.display=c.type==="none"?"none":"flex";
+  $("freeRow").style.display=c.type==="free"?"block":"none";
+  $("note").textContent=(catKey==="graves"||(c.type==="free"&&freeFreq<150))?"Les graves profonds demandent un casque ou une bonne enceinte ; les haut-parleurs de téléphone les restituent mal.":(c.type==="binaural"&&ondesMode==="casque")?"Casque indispensable : l'effet naît de l'écart entre les deux oreilles.":"Écouteurs recommandés pour une écoute pleine.";
+  $("chips").style.display=(c.type==="none"||c.type==="free")?"none":"flex";
   $("chips").innerHTML=c.items.map((x,i)=>`<button class="chip ${i===idx?'on':''}" data-i="${i}">${c.type==="noise"?x.n:(c.type==="binaural"?x.n:x.f+" Hz")}</button>`).join("");
   $("chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{idx=+b.dataset.i;paint();saveSettings();if(playing&&!progKey)restartTone();});
 }
@@ -377,9 +405,10 @@ function buildMode(){
   $("modeRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{ondesMode=b.dataset.m;buildMode();paint();saveSettings();if(playing&&!progKey)restartTone();});
 }
 function buildAmb(){
-  $("amb").innerHTML=AMB.map(a=>`<button class="chip ${a.k===ambKey?'on':''}" data-k="${a.k}">${a.n}</button>`).join("");
-  $("amb").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ambKey=b.dataset.k;$("amb").querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b));setAmbFx(ambKey);if(catKey==="aucune")paint();saveSettings();if(playing&&!progKey)startAmbience(ambKey);});
+  $("amb").innerHTML=AMB.map(a=>`<button class="chip ${((a.k==="none"&&!ambKeys.length)||ambKeys.includes(a.k))?'on':''}" data-k="${a.k}">${a.n}</button>`).join("");
+  $("amb").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(k==="none")ambKeys=[];else if(ambKeys.includes(k))ambKeys=ambKeys.filter(x=>x!==k);else{ambKeys.push(k);if(ambKeys.length>2)ambKeys.shift();}refreshAmbChips();setAmbFx(ambKeys[0]||"none");if(catKey==="aucune")paint();saveSettings();if(playing&&!progKey)syncAmb();});
 }
+function refreshAmbChips(){$("amb").querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",(c.dataset.k==="none"&&!ambKeys.length)||ambKeys.includes(c.dataset.k)));}
 function buildBreath(){
   $("breathSel").innerHTML=Object.entries(BREATH).map(([k,v])=>`<button class="chip ${k===breathKey?'on':''}" data-k="${k}">${v.n}</button>`).join("");
   $("breathSel").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{breathKey=b.dataset.k;$("breathSel").querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b));saveSettings();if(playing){stopBreath();runBreath();}});
@@ -483,17 +512,47 @@ function ambOcean(out){const s=noiseSrc(BROWN),lp=ctx.createBiquadFilter(),g=ctx
 function ambWind(out){const s=noiseSrc(PINK),bp=ctx.createBiquadFilter(),g=ctx.createGain();bp.type="bandpass";bp.frequency.value=500;bp.Q.value=0.8;g.gain.value=0.48;s.connect(bp).connect(g).connect(out);s.start();const s2=noiseSrc(BROWN),lp=ctx.createBiquadFilter(),g2=ctx.createGain();lp.type="lowpass";lp.frequency.value=300;g2.gain.value=0.3;s2.connect(lp).connect(g2).connect(out);s2.start();const lf=ctx.createOscillator(),lfg=ctx.createGain();lf.frequency.value=0.05;lfg.gain.value=320;lf.connect(lfg).connect(bp.frequency);const gl=ctx.createOscillator(),glg=ctx.createGain();gl.frequency.value=0.11;glg.gain.value=0.3;gl.connect(glg).connect(g.gain);lf.start();gl.start();return{mods:[[lf,0.05],[gl,0.11]],stop(){[s,s2,lf,gl].forEach(n=>{try{n.stop()}catch(e){}})}};}
 function ambFire(out){const s=noiseSrc(BROWN),lp=ctx.createBiquadFilter(),g=ctx.createGain();lp.type="lowpass";lp.frequency.value=420;g.gain.value=0.5;s.connect(lp).connect(g).connect(out);s.start();let alive=true,t;(function crack(){if(!alive)return;fireCrack(out,Math.random()<0.22);if(Math.random()<0.55)setTimeout(()=>{if(alive)fireCrack(out,false);},12+Math.random()*40);if(Math.random()<0.25)setTimeout(()=>{if(alive)fireCrack(out,false);},45+Math.random()*70);t=setTimeout(crack,(70+Math.random()*150)/Math.max(0.3,ambFactor()));})();return{mods:[],stop(){alive=false;clearTimeout(t);try{s.stop()}catch(e){}}};}
 function ambStream(out){const s=noiseSrc(PINK),hp=ctx.createBiquadFilter(),g=ctx.createGain();hp.type="highpass";hp.frequency.value=550;g.gain.value=0.4;s.connect(hp).connect(g).connect(out);s.start();const s2=noiseSrc(PINK),bp=ctx.createBiquadFilter(),g2=ctx.createGain();bp.type="bandpass";bp.frequency.value=750;bp.Q.value=0.7;g2.gain.value=0.26;s2.connect(bp).connect(g2).connect(out);s2.start();const s3=noiseSrc(PINK),hp3=ctx.createBiquadFilter(),g3=ctx.createGain();hp3.type="highpass";hp3.frequency.value=3000;g3.gain.value=0.13;s3.connect(hp3).connect(g3).connect(out);s3.start();const lf=ctx.createOscillator(),lfg=ctx.createGain();lf.frequency.value=0.35;lfg.gain.value=0.1;lf.connect(lfg).connect(g2.gain);const lf2=ctx.createOscillator(),lfg2=ctx.createGain();lf2.frequency.value=0.6;lfg2.gain.value=0.07;lf2.connect(lfg2).connect(g3.gain);lf.start();lf2.start();return{mods:[[lf,0.35],[lf2,0.6]],stop(){[s,s2,s3,lf,lf2].forEach(n=>{try{n.stop()}catch(e){}})}};}
-const AMBFN={rain:ambRain,ocean:ambOcean,wind:ambWind,fire:ambFire,stream:ambStream};
+function ambStorm(out){
+  const s=noiseSrc(PINK),hp=ctx.createBiquadFilter(),g=ctx.createGain();hp.type="highpass";hp.frequency.value=800;g.gain.value=0.3;s.connect(hp).connect(g).connect(out);s.start();
+  let alive=true,t,th;
+  (function drop(){if(!alive)return;softPop(out,2800,7000,0.04+Math.random()*0.04,0.022);t=setTimeout(drop,(60+Math.random()*120)/Math.max(0.3,ambFactor()));})();
+  (function thunder(){if(!alive)return;const now=ctx.currentTime,src=noiseSrc(BROWN),lp=ctx.createBiquadFilter(),tg=ctx.createGain();lp.type="lowpass";lp.frequency.value=170+Math.random()*120;tg.gain.value=0;src.connect(lp).connect(tg).connect(out);src.start();const dur=2.5+Math.random()*2.5,peak=0.45+Math.random()*0.4;tg.gain.setValueAtTime(0,now);tg.gain.linearRampToValueAtTime(peak,now+0.3+Math.random()*0.6);tg.gain.exponentialRampToValueAtTime(0.001,now+dur);tg.gain.linearRampToValueAtTime(0,now+dur+0.1);src.stop(now+dur+0.2);th=setTimeout(thunder,8000+Math.random()*16000);})();
+  return{mods:[],stop(){alive=false;clearTimeout(t);clearTimeout(th);try{s.stop()}catch(e){}}};
+}
+function ambNight(out){
+  const s=noiseSrc(BROWN),lp=ctx.createBiquadFilter(),g=ctx.createGain();lp.type="lowpass";lp.frequency.value=200;g.gain.value=0.16;s.connect(lp).connect(g).connect(out);s.start();
+  const s2=noiseSrc(WHITE),bp=ctx.createBiquadFilter(),g2=ctx.createGain();bp.type="bandpass";bp.frequency.value=4800;bp.Q.value=6;g2.gain.value=0;s2.connect(bp).connect(g2).connect(out);s2.start();
+  const trill=ctx.createOscillator(),tg=ctx.createGain();trill.type="sine";trill.frequency.value=18;tg.gain.value=0.16;trill.connect(tg).connect(g2.gain);trill.start();
+  const slow=ctx.createOscillator(),sg=ctx.createGain();slow.frequency.value=0.15;sg.gain.value=0.05;slow.connect(sg).connect(g2.gain);slow.start();
+  return{mods:[[trill,18],[slow,0.15]],stop(){[s,s2,trill,slow].forEach(n=>{try{n.stop()}catch(e){}})}};
+}
+function ambHeart(out){
+  let alive=true,t;
+  function thump(peak){const now=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(90,now);o.frequency.exponentialRampToValueAtTime(45,now+0.12);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(peak,now+0.01);g.gain.exponentialRampToValueAtTime(0.001,now+0.22);g.gain.linearRampToValueAtTime(0,now+0.24);o.connect(g).connect(out);o.start(now);o.stop(now+0.26);}
+  (function beat(){if(!alive)return;thump(0.7);setTimeout(()=>{if(alive)thump(0.42);},180);const bpm=58+Math.random()*6;t=setTimeout(beat,(60000/bpm)/Math.max(0.3,ambFactor()));})();
+  return{mods:[],stop(){alive=false;clearTimeout(t);}};
+}
+function ambFan(out){
+  const s=noiseSrc(PINK),lp=ctx.createBiquadFilter(),g=ctx.createGain();lp.type="lowpass";lp.frequency.value=900;g.gain.value=0.45;s.connect(lp).connect(g).connect(out);s.start();
+  const lfo=ctx.createOscillator(),lg=ctx.createGain();lfo.frequency.value=5;lg.gain.value=0.06;lfo.connect(lg).connect(g.gain);lfo.start();
+  const o=ctx.createOscillator(),og=ctx.createGain();o.type="sine";o.frequency.value=120;og.gain.value=0.045;o.connect(og).connect(out);o.start();
+  return{mods:[[lfo,5]],stop(){[s,lfo,o].forEach(n=>{try{n.stop()}catch(e){}})}};
+}
+function ambCafe(out){
+  const s=noiseSrc(PINK),bp=ctx.createBiquadFilter(),g=ctx.createGain();bp.type="bandpass";bp.frequency.value=700;bp.Q.value=0.5;g.gain.value=0.4;s.connect(bp).connect(g).connect(out);s.start();
+  const lf=ctx.createOscillator(),lg=ctx.createGain();lf.frequency.value=0.6;lg.gain.value=0.12;lf.connect(lg).connect(g.gain);const lf2=ctx.createOscillator(),lg2=ctx.createGain();lf2.frequency.value=0.27;lg2.gain.value=0.1;lf2.connect(lg2).connect(g.gain);lf.start();lf2.start();
+  let alive=true,t;
+  (function clink(){if(!alive)return;const now=ctx.currentTime,o=ctx.createOscillator(),cg=ctx.createGain();o.type="sine";o.frequency.value=1800+Math.random()*1400;cg.gain.setValueAtTime(0,now);cg.gain.linearRampToValueAtTime(0.05+Math.random()*0.04,now+0.005);cg.gain.exponentialRampToValueAtTime(0.001,now+0.25);cg.gain.linearRampToValueAtTime(0,now+0.28);o.connect(cg).connect(out);o.start(now);o.stop(now+0.3);t=setTimeout(clink,1800+Math.random()*4000);})();
+  return{mods:[[lf,0.6],[lf2,0.27]],stop(){alive=false;clearTimeout(t);[s,lf,lf2].forEach(n=>{try{n.stop()}catch(e){}})}};
+}
+const AMBFN={rain:ambRain,ocean:ambOcean,wind:ambWind,fire:ambFire,stream:ambStream,storm:ambStorm,night:ambNight,heart:ambHeart,fan:ambFan,cafe:ambCafe};
 function ambFactor(){return 0.25+(+$("ambRate").value/100)*1.25;}
 function setAmbFx(k){$("ambfx").className=(k&&k!=="none")?("on fx-"+k):"";}
-function applyAmbRate(){if(!ctx||!curAmb||!curAmb.mods)return;const r=ambFactor(),n=ctx.currentTime;curAmb.mods.forEach(([o,base])=>{try{o.frequency.cancelScheduledValues(n);o.frequency.setValueAtTime(o.frequency.value,n);o.frequency.linearRampToValueAtTime(base*r,n+0.4);}catch(e){}});}
-function startAmbience(k){
-  setAmbFx(k);
-  if(!ctx)return;const now=ctx.currentTime;
-  if(curAmb){const old=curAmb;ambBus.gain.cancelScheduledValues(now);ambBus.gain.setValueAtTime(ambBus.gain.value,now);ambBus.gain.linearRampToValueAtTime(0,now+0.25);setTimeout(()=>old.stop(),300);curAmb=null;}
-  if(k==="none")return;
-  setTimeout(()=>{if(!playing)return;curAmb=AMBFN[k](ambBus);applyAmbRate();const t=ctx.currentTime;ambBus.gain.cancelScheduledValues(t);ambBus.gain.setValueAtTime(0,t);ambBus.gain.linearRampToValueAtTime(volAmb(),t+1.2);},320);
-}
+function applyRateTo(a){if(!a||!a.mods)return;const r=ambFactor(),n=ctx.currentTime;a.mods.forEach(([o,base])=>{try{o.frequency.cancelScheduledValues(n);o.frequency.setValueAtTime(o.frequency.value,n);o.frequency.linearRampToValueAtTime(base*r,n+0.4);}catch(e){}});}
+function applyAmbRate(){Object.values(ambActive).forEach(applyRateTo);}
+function startOneAmb(k){const g=ctx.createGain();g.gain.value=0;g.connect(ambBus);const a=AMBFN[k](g);a.gn=g;a.key=k;const t=ctx.currentTime;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.78,t+1.2);applyRateTo(a);return a;}
+function stopOneAmb(a){try{const t=ctx.currentTime;a.gn.gain.cancelScheduledValues(t);a.gn.gain.setValueAtTime(a.gn.gain.value,t);a.gn.gain.linearRampToValueAtTime(0,t+0.7);}catch(e){}setTimeout(()=>{try{a.stop()}catch(e){}},800);}
+function syncAmb(){if(!ctx)return;Object.keys(ambActive).forEach(k=>{if(!ambKeys.includes(k)){stopOneAmb(ambActive[k]);delete ambActive[k];}});ambKeys.forEach(k=>{if(!ambActive[k])ambActive[k]=startOneAmb(k);});const t=ctx.currentTime;ambBus.gain.cancelScheduledValues(t);ambBus.gain.setValueAtTime(volAmb(),t);setAmbFx(ambKeys[0]||"none");}
 function bell(){ensureCtx();const now=ctx.currentTime,base=432,parts=[[1,1],[2.0,0.5],[2.76,0.32],[5.4,0.14]];parts.forEach(([m,a],i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=base*m;g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.2*a,now+0.01);g.gain.exponentialRampToValueAtTime(0.001,now+4.5+i);g.gain.linearRampToValueAtTime(0,now+4.6+i);o.connect(g);g.connect(master);o.start(now);o.stop(now+5+i);});}
 // bol tibétain : grave, chaud, longue traîne, léger désaccord pour le chatoiement
 function singingBowl(){ensureCtx();const now=ctx.currentTime,base=190+Math.random()*70,parts=[[1,0.5],[2.4,0.22],[3.84,0.12],[5.4,0.06]];parts.forEach(([m,a],i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=base*m;o.detune.value=Math.random()*8-4;g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.16*a,now+0.05);g.gain.exponentialRampToValueAtTime(0.001,now+6+i*1.3);g.gain.linearRampToValueAtTime(0,now+6.3+i*1.3);o.connect(g).connect(master);o.start(now);o.stop(now+7+i*1.3);});}
@@ -536,6 +595,7 @@ function breathCue(label,dur){
 function startTone(){
   const c=CATS[catKey],it=c.items[idx];toneNodes=[];
   if(c.type==="none"){return;}
+  if(c.type==="free"){const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=freeFreq;g.gain.value=0.6;o.connect(g).connect(toneBus);o.start();toneNodes.push(o);return;}
   if(c.type==="tone"){
     const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=it.f;g.gain.value=it.f<150?0.78:0.55;o.connect(g).connect(toneBus);o.start();toneNodes.push(o);
   }else if(c.type==="binaural"){
@@ -559,7 +619,7 @@ function start(){
   if($("tgStart").classList.contains("on"))bell();
   if(progKey){startProgram();}else{
     startTone();const now=ctx.currentTime;toneBus.gain.cancelScheduledValues(now);toneBus.gain.setValueAtTime(0,now);toneBus.gain.linearRampToValueAtTime(volTone(),now+1.4);
-    startAmbience(ambKey);
+    syncAmb();
     const act=$("timer").querySelector(".tbtn.on"),m=+act.dataset.m;if(m)armCountdown(m*60);
   }
   playing=true;app.classList.add("playing");setIcon(true);runBreath();startViz();
@@ -572,8 +632,8 @@ function stop(endBell){
   clearTimeout(progStepTimer);
   const now=ctx.currentTime;
   [toneBus,ambBus].forEach(bus=>{bus.gain.cancelScheduledValues(now);bus.gain.setValueAtTime(bus.gain.value,now);bus.gain.linearRampToValueAtTime(0,now+0.9);});
-  const dead=toneNodes.slice(),amb=curAmb;setTimeout(()=>{dead.forEach(n=>{try{n.stop()}catch(e){}});if(amb)amb.stop();},1000);
-  toneNodes=[];curAmb=null;playing=false;app.classList.remove("playing");setIcon(false);stopBreath();clearCountdown();
+  const dead=toneNodes.slice(),acts=Object.values(ambActive);setTimeout(()=>{dead.forEach(n=>{try{n.stop()}catch(e){}});acts.forEach(a=>{try{a.stop()}catch(e){}});},1000);
+  toneNodes=[];ambActive={};playing=false;app.classList.remove("playing");setIcon(false);stopBreath();clearCountdown();
   if('speechSynthesis' in window)try{speechSynthesis.cancel()}catch(e){}
   stopSilent();relWake();clearBowls();
   if(progKey)renderPhases(PROGRAMS[progKey],-1);
@@ -586,7 +646,7 @@ function setIcon(p){$("ico").innerHTML=p?'<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>
 /* ===================== Moteur de programme ===================== */
 function startProgram(){const p=PROGRAMS[progKey];progStep=0;armCountdown(progTotal(p));applyStep(p.steps[0]);renderPhases(p,0);scheduleNext(p);}
 function scheduleNext(p){const s=p.steps[progStep];progStepTimer=setTimeout(()=>{progStep++;if(progStep>=p.steps.length){stop(true);selectProgram(progKey);return;}applyStep(p.steps[progStep]);renderPhases(p,progStep);scheduleNext(p);},s.t*1000);}
-function applyStep(s){catKey=s.cat;ondesMode=s.mode||"casque";ambKey=s.amb;breathKey=s.breath;idx=Math.max(0,CATS[s.cat].items.findIndex(x=>x.f===s.f));applyStepPreview(s);restartTone();startAmbience(ambKey);stopBreath();runBreath();}
+function applyStep(s){catKey=s.cat;ondesMode=s.mode||"casque";ambKeys=(s.amb&&s.amb!=="none")?[s.amb]:[];breathKey=s.breath;idx=Math.max(0,CATS[s.cat].items.findIndex(x=>x.f===s.f));applyStepPreview(s);restartTone();syncAmb();stopBreath();runBreath();}
 
 /* ===================== Respiration ===================== */
 function runBreath(){
@@ -628,9 +688,10 @@ function setupMediaSession(){if(!('mediaSession'in navigator))return;try{navigat
 /* ===================== Liaisons ===================== */
 $("play").onclick=()=>{playing?stop(false):start();};
 $("vol").oninput=()=>{if(playing&&ctx){const n=ctx.currentTime;toneBus.gain.cancelScheduledValues(n);toneBus.gain.setValueAtTime(volTone(),n);}saveSettings();};
-$("volAmb").oninput=()=>{if(playing&&ctx&&curAmb){const n=ctx.currentTime;ambBus.gain.cancelScheduledValues(n);ambBus.gain.setValueAtTime(volAmb(),n);}saveSettings();};
+$("volAmb").oninput=()=>{if(playing&&ctx){const n=ctx.currentTime;ambBus.gain.cancelScheduledValues(n);ambBus.gain.setValueAtTime(volAmb(),n);}saveSettings();};
 $("volCue").oninput=()=>{if(ctx&&cueBus)cueBus.gain.value=cueVol();saveSettings();};
 $("ambRate").oninput=()=>{applyAmbRate();saveSettings();};
+$("freeFreq").oninput=()=>{freeFreq=+$("freeFreq").value;if(catKey==="libre"){$("freq").innerHTML=freeFreq+'<small>Hz</small>';$("note").textContent=freeFreq<150?"Les graves profonds demandent un casque ou une bonne enceinte ; les haut-parleurs de téléphone les restituent mal.":"Écouteurs recommandés pour une écoute pleine.";}saveSettings();if(playing&&!progKey&&catKey==="libre"&&toneNodes[0]){const n=ctx.currentTime;try{toneNodes[0].frequency.cancelScheduledValues(n);toneNodes[0].frequency.setValueAtTime(toneNodes[0].frequency.value,n);toneNodes[0].frequency.linearRampToValueAtTime(freeFreq,n+0.08);}catch(e){}}};
 function bindToggle(id,after){const el=$(id);el.onclick=()=>{el.classList.toggle("on");after&&after(el.classList.contains("on"));saveSettings();};}
 bindToggle("tgStart");bindToggle("tgEnd");bindToggle("tgBowls",v=>{if(v&&playing)scheduleBowls();else clearBowls();});
 bindToggle("tgWake",v=>{wakeOn=v;if(v&&playing)reqWake();else if(!v)relWake();});
@@ -642,12 +703,12 @@ function buildTimers(){
 /* ===================== Restauration ===================== */
 function applySaved(){
   const s=lsGet(SKEY);if(!s)return;
-  if(s.vol!=null)$("vol").value=s.vol;if(s.volAmb!=null)$("volAmb").value=s.volAmb;if(s.volCue!=null)$("volCue").value=s.volCue;if(s.ambRate!=null)$("ambRate").value=s.ambRate;
+  if(s.vol!=null)$("vol").value=s.vol;if(s.volAmb!=null)$("volAmb").value=s.volAmb;if(s.volCue!=null)$("volCue").value=s.volCue;if(s.ambRate!=null)$("ambRate").value=s.ambRate;if(s.freeFreq!=null){freeFreq=+s.freeFreq;$("freeFreq").value=freeFreq;}
   $("tgStart").classList.toggle("on",s.bStart!==false);$("tgEnd").classList.toggle("on",s.bEnd!==false);$("tgBowls").classList.toggle("on",!!s.bBowls);
   if(s.cueMode&&["none","soft","chime","voice"].includes(s.cueMode))cueMode=s.cueMode;else cueMode="soft";
   if(s.wakeOn){wakeOn=true;$("tgWake").classList.add("on");}
   if(s.catKey&&CATS[s.catKey]){catKey=s.catKey;idx=Math.min(s.idx||0,CATS[catKey].items.length-1);}
-  if(s.ondesMode)ondesMode=s.ondesMode;if(s.ambKey)ambKey=s.ambKey;if(s.breathKey&&BREATH[s.breathKey])breathKey=s.breathKey;
+  if(s.ondesMode)ondesMode=s.ondesMode;if(Array.isArray(s.ambKeys))ambKeys=s.ambKeys.slice(0,2);else if(s.ambKey&&s.ambKey!=="none")ambKeys=[s.ambKey];if(s.breathKey&&BREATH[s.breathKey])breathKey=s.breathKey;
   if(s.progKey&&PROGRAMS[s.progKey])progKey=s.progKey;
 }
 
@@ -655,7 +716,7 @@ function applySaved(){
 applySaved();
 buildTabs();buildMode();buildAmb();buildBreath();buildCue();buildTimers();buildPrograms();
 if(progKey)selectProgram(progKey);else paint();
-setAmbFx(playing?ambKey:(progKey?"none":ambKey));
+setAmbFx((progKey&&!playing)?"none":(ambKeys[0]||"none"));
 updateStats();stopBreath();
 if('speechSynthesis' in window){try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=function(){};}catch(e){}}
 
