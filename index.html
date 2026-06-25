@@ -244,10 +244,12 @@
         <div class="pw-row"><button class="pw-no" id="photicCancel">Annuler</button><button class="pw-ok" id="photicOk">J'ai compris, activer</button></div>
       </div>
       <div id="photicCtl" class="hide">
+        <div class="seg" id="photicSrcRow"><button data-s="screen" class="on">Écran</button><button data-s="torch">Flash du téléphone</button></div>
         <div class="row" id="photicFreqRow"><label>Cadence</label><input type="range" id="photicFreq" min="1" max="24" step="0.5" value="10"><span class="photic-hz" id="photicHzLbl">10 Hz</span></div>
         <div class="seg" id="photicWaveRow"><button data-w="soft" class="on">Doux</button><button data-w="strobe">Stroboscope</button></div>
         <div class="chips" id="photicColors" style="margin-top:10px"></div>
-        <div class="row"><label>Intensité</label><input type="range" id="photicInt" min="10" max="100" value="55"></div>
+        <div class="row"><label>Intensité</label><input type="range" id="photicInt" min="10" max="100" value="85"></div>
+        <p class="hint hide" id="photicMsg" style="margin-top:8px"></p>
       </div>
     </div>
 
@@ -327,7 +329,7 @@ const PROGRAMS={
 /* ===================== État ===================== */
 let catKey="solfege",idx=4,playing=false,ondesMode="casque",ambKeys=[],breathKey="calme",cueMode="soft",freeFreq=220;
 let wakeOn=false;
-let photicOn=false,photicFollow=true,photicFreq=10,photicWave="soft",photicColor="#e8c77a",photicInt=55,photicConsent=false,photicRAF=null,photicEl=null,photicT0=0;
+let photicOn=false,photicFollow=true,photicFreq=10,photicWave="soft",photicColor="#e8c77a",photicInt=85,photicConsent=false,photicRAF=null,photicEl=null,photicT0=0;
 let progKey=null,progStep=0,progStepTimer=null;
 let ctx,master,shaper,toneBus,ambBus,cueBus;
 let WHITE,PINK,BROWN,curGlow="#e8c77a";
@@ -341,7 +343,7 @@ function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function saveSettings(){lsSet(SKEY,{catKey,idx,ondesMode,ambKeys,breathKey,cueMode,progKey,wakeOn,
   vol:$("vol").value,volAmb:$("volAmb").value,volCue:$("volCue").value,ambRate:$("ambRate").value,freeFreq,
-  photicOn,photicFollow,photicFreq,photicWave,photicColor,photicInt,photicConsent,
+  photicOn,photicFollow,photicFreq,photicWave,photicColor,photicInt,photicConsent,photicSource,
   bStart:$("tgStart").classList.contains("on"),bEnd:$("tgEnd").classList.contains("on"),bBowls:$("tgBowls").classList.contains("on")});}
 
 /* ===================== Statistiques ===================== */
@@ -697,23 +699,55 @@ function photicHz(){
   }
   return photicFreq;
 }
+function photicBrightness(){return 1+Math.max(0,photicInt-50)/50*0.9;} // boost lumineux au-dela de 50% pour mieux traverser les paupieres
 function photicFrame(now){
-  if(!photicOn||!photicEl){return;}
+  if(!photicOn||!photicEl||photicSource!=="screen"){return;}
   const f=photicHz(),phase=(((now-photicT0)/1000)*f)%1;
   let v;
   if(photicWave==="strobe")v=phase<0.5?1:0;
-  else v=0.5-0.5*Math.cos(2*Math.PI*phase); // sinus adouci 0..1
+  else v=Math.pow(0.5-0.5*Math.cos(2*Math.PI*phase),0.55); // sinus adouci, dwell renforce pres du pic
   photicEl.style.opacity=(v*(photicInt/100)).toFixed(3);
   photicRAF=requestAnimationFrame(photicFrame);
 }
+/* ---- Flash du telephone (torch). Android Chrome uniquement, iOS ne l'expose pas au web ---- */
+let photicSource="screen",torchTrack=null,torchTimer=null,torchState=false;
+async function torchStart(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    const track=stream.getVideoTracks()[0];
+    const caps=track.getCapabilities?track.getCapabilities():{};
+    if(!caps||!caps.torch){track.stop();return false;}
+    torchTrack=track;return true;
+  }catch(e){return false;}
+}
+function torchSet(on){if(torchTrack)torchTrack.applyConstraints({advanced:[{torch:on}]}).catch(()=>{});}
+function torchLoop(){
+  const f=Math.min(photicHz(),6),half=Math.max(60,500/f); // applyConstraints est lent : plafond ~6 Hz
+  torchState=!torchState;torchSet(torchState);
+  torchTimer=setTimeout(torchLoop,half);
+}
+function torchStop(){clearTimeout(torchTimer);torchTimer=null;if(torchTrack){torchSet(false);try{torchTrack.stop();}catch(e){}torchTrack=null;}torchState=false;}
+function photicMsg(t){const el=$("photicMsg");if(el){el.textContent=t||"";el.classList.toggle("hide",!t);}}
+function setPhoticSrcUI(){const r=$("photicSrcRow");if(r)r.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.s===photicSource));}
 function startPhotic(){
   if(!photicEl)photicEl=$("photic");
-  photicEl.style.transition="";photicEl.style.background=photicColor;
+  if(photicSource==="torch"){
+    photicEl.style.transition="";photicEl.style.opacity=0;
+    photicMsg("Activation du flash, autorise la camera si l'app le demande.");
+    torchStart().then(ok=>{
+      if(ok){photicMsg("Flash actif. Cadence plafonnee a 6 Hz (limite materielle du flash).");torchState=false;torchLoop();}
+      else{photicMsg("Flash indisponible sur cet appareil. Sur iPhone, le web ne peut pas piloter le flash. Retour a l'ecran.");photicSource="screen";setPhoticSrcUI();saveSettings();startPhotic();}
+    });
+    return;
+  }
+  photicMsg("");
+  photicEl.style.transition="";photicEl.style.background=photicColor;photicEl.style.filter="brightness("+photicBrightness()+")";
   photicT0=performance.now();cancelAnimationFrame(photicRAF);
   photicRAF=requestAnimationFrame(photicFrame);
 }
 function stopPhotic(){
-  cancelAnimationFrame(photicRAF);photicRAF=null;
+  cancelAnimationFrame(photicRAF);photicRAF=null;torchStop();
   if(photicEl){photicEl.style.transition="opacity .4s";photicEl.style.opacity=0;}
 }
 function updatePhoticHzLbl(){const el=$("photicHzLbl");if(!el)return;const v=photicFollow?photicHz():photicFreq;el.textContent=(Math.round(v*10)/10)+" Hz";}
@@ -729,9 +763,10 @@ function buildPhoticColors(){
 function initPhoticUI(){
   photicEl=$("photic");
   $("tgPhoticFollow").classList.toggle("on",photicFollow);
-  $("photicFreq").value=photicFreq;$("photicFreq").disabled=photicFollow;$("photicFreqRow").classList.toggle("photic-dim",photicFollow);
+  $("photicFreq").value=photicFreq;
   $("photicInt").value=photicInt;
   $("photicWaveRow").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.w===photicWave));
+  setPhoticSrcUI();
   $("tgPhotic").classList.toggle("on",photicOn);$("photicCtl").classList.toggle("hide",!photicOn);
   buildPhoticColors();updatePhoticHzLbl();
 }
@@ -741,10 +776,11 @@ $("tgPhotic").onclick=()=>{
 };
 $("photicOk").onclick=()=>{photicConsent=true;$("photicWarn").classList.add("hide");enablePhotic(true);};
 $("photicCancel").onclick=()=>{$("photicWarn").classList.add("hide");};
-$("tgPhoticFollow").onclick=()=>{photicFollow=!photicFollow;$("tgPhoticFollow").classList.toggle("on",photicFollow);$("photicFreq").disabled=photicFollow;$("photicFreqRow").classList.toggle("photic-dim",photicFollow);updatePhoticHzLbl();saveSettings();};
-$("photicFreq").oninput=()=>{photicFreq=+$("photicFreq").value;updatePhoticHzLbl();saveSettings();};
-$("photicInt").oninput=()=>{photicInt=+$("photicInt").value;saveSettings();};
+$("tgPhoticFollow").onclick=()=>{photicFollow=!photicFollow;$("tgPhoticFollow").classList.toggle("on",photicFollow);updatePhoticHzLbl();saveSettings();};
+$("photicFreq").oninput=()=>{photicFreq=+$("photicFreq").value;if(photicFollow){photicFollow=false;$("tgPhoticFollow").classList.remove("on");}updatePhoticHzLbl();saveSettings();};
+$("photicInt").oninput=()=>{photicInt=+$("photicInt").value;if(photicEl&&photicSource==="screen")photicEl.style.filter="brightness("+photicBrightness()+")";saveSettings();};
 $("photicWaveRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicWave=b.dataset.w;$("photicWaveRow").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));saveSettings();});
+$("photicSrcRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicSource=b.dataset.s;setPhoticSrcUI();saveSettings();if(photicOn&&playing){stopPhotic();startPhotic();}});
 
 function buildTimers(){
   $("timer").innerHTML=TIMERS.map((m,i)=>`<button class="tbtn ${i===0?'on':''}" data-m="${m}">${m?m+" min":"∞"}</button>`).join("");
@@ -764,6 +800,7 @@ function applySaved(){
   if(s.photicWave==="strobe"||s.photicWave==="soft")photicWave=s.photicWave;
   if(typeof s.photicColor==="string")photicColor=s.photicColor;
   if(s.photicInt!=null)photicInt=Math.max(10,Math.min(100,+s.photicInt));
+  if(s.photicSource==="torch"||s.photicSource==="screen")photicSource=s.photicSource;
   if(s.photicOn&&photicConsent)photicOn=true;
   if(s.catKey&&CATS[s.catKey]){catKey=s.catKey;idx=Math.min(s.idx||0,CATS[catKey].items.length-1);}
   if(s.ondesMode)ondesMode=s.ondesMode;if(Array.isArray(s.ambKeys))ambKeys=s.ambKeys.slice(0,2);else if(s.ambKey&&s.ambKey!=="none")ambKeys=[s.ambKey];if(s.breathKey&&BREATH[s.breathKey])breathKey=s.breathKey;
