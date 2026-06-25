@@ -3,7 +3,7 @@
    Le CACHE ci-dessous est la version. Pour "bumper" : change
    le numéro (v21 -> v22) à CHAQUE fois que tu modifies un fichier.
    ============================================================ */
-const CACHE = "resonance-v23";
+const CACHE = "resonance-v24";
 
 /* Fichiers mis en cache à l'installation (chemins relatifs au dossier). */
 const CORE = [

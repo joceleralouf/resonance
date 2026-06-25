@@ -244,6 +244,8 @@
         <div class="pw-row"><button class="pw-no" id="photicCancel">Annuler</button><button class="pw-ok" id="photicOk">J'ai compris, activer</button></div>
       </div>
       <div id="photicCtl" class="hide">
+        <div class="row" style="margin-bottom:6px"><label>Séance</label></div>
+        <div class="chips" id="photicProgs" style="margin-bottom:12px"></div>
         <div class="seg" id="photicSrcRow"><button data-s="screen" class="on">Écran</button><button data-s="torch">Flash du téléphone</button></div>
         <div class="row" id="photicFreqRow"><label>Cadence</label><input type="range" id="photicFreq" min="1" max="24" step="0.5" value="10"><span class="photic-hz" id="photicHzLbl">10 Hz</span></div>
         <div class="seg" id="photicWaveRow"><button data-w="soft" class="on">Doux</button><button data-w="strobe">Stroboscope</button></div>
@@ -343,7 +345,7 @@ function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function saveSettings(){lsSet(SKEY,{catKey,idx,ondesMode,ambKeys,breathKey,cueMode,progKey,wakeOn,
   vol:$("vol").value,volAmb:$("volAmb").value,volCue:$("volCue").value,ambRate:$("ambRate").value,freeFreq,
-  photicOn,photicFollow,photicFreq,photicWave,photicColor,photicInt,photicConsent,photicSource,
+  photicOn,photicFollow,photicFreq,photicWave,photicColor,photicInt,photicConsent,photicSource,photicProg,
   bStart:$("tgStart").classList.contains("on"),bEnd:$("tgEnd").classList.contains("on"),bBowls:$("tgBowls").classList.contains("on")});}
 
 /* ===================== Statistiques ===================== */
@@ -689,8 +691,28 @@ bindToggle("tgStart");bindToggle("tgEnd");bindToggle("tgBowls",v=>{if(v&&playing
 bindToggle("tgWake",v=>{wakeOn=v;if(v&&playing)reqWake();else if(!v)relWake();});
 /* ===================== Lumière pulsée (Dreamachine) ===================== */
 const PHOTIC_COLORS=[["#e8c77a","Ambre"],["#ff5a4d","Rouge"],["#b07bff","Violet"],["#79c7d9","Cyan"],["#ffffff","Blanc"]];
-// fréquence visuelle effective : suit le battement des ondes si dispo, sinon le curseur. Plafonnée à 24 Hz (les écrans 60 Hz ne clignotent pas proprement au-delà).
+/* Séances : suites de phases [hzDebut, hzFin, duree(s)]. Rampe lineaire si hzDebut!=hzFin. Bouclent.
+   Fondees sur la recherche flicker : 10 Hz = pic d'hallucinations, <10 Hz radial, 10-20 Hz spirale, rythme regulier. */
+const PHOTIC_PROGS={
+  dream:{seg:[[10,10,600]]},                                            // Dreamachine authentique : 10 Hz fixe
+  monte:{seg:[[7,7,90],[7,10,120],[10,10,210],[10,12,90]]},             // montee douce vers et autour d'alpha
+  morph:{seg:[[7.5,7.5,120],[7.5,10,90],[10,10,150],[10,16,120],[16,16,90],[16,10,90]]}, // radial -> spirale
+  vague:{seg:[[7,16,80],[16,7,80]]},                                    // balayage lent continu
+  profonde:{seg:[[10,10,180],[10,7,150],[7,6,210],[6,6,120]]}           // descente alpha -> theta, plus onirique
+};
+const PHOTIC_PROG_LIST=[["none","Aucune"],["dream","Dreamachine"],["monte","Montée"],["morph","Radial → Spirale"],["vague","Vague"],["profonde","Profonde"]];
+function photicSessionHz(el,prog){
+  const segs=PHOTIC_PROGS[prog].seg;let total=0;for(const s of segs)total+=s[2];
+  let t=el%total;
+  for(const s of segs){if(t<s[2])return s[0]+(s[1]-s[0])*(t/s[2]);t-=s[2];}
+  return segs[segs.length-1][1];
+}
+// fréquence visuelle effective : séance > suivi des ondes > curseur. Plafonnée à 24 Hz (les écrans 60 Hz ne clignotent pas proprement au-delà).
 function photicHz(){
+  if(photicProg&&photicProg!=="none"){
+    const el=playing?(performance.now()-photicT0)/1000:0;
+    return Math.max(1,Math.min(24,photicSessionHz(el,photicProg)));
+  }
   if(photicFollow){
     let beat=(catKey==="ondes")?CATS.ondes.items[idx]?.f:null;
     if(beat==null)beat=photicFreq;
@@ -710,7 +732,7 @@ function photicFrame(now){
   photicRAF=requestAnimationFrame(photicFrame);
 }
 /* ---- Flash du telephone (torch). Android Chrome uniquement, iOS ne l'expose pas au web ---- */
-let photicSource="screen",torchTrack=null,torchTimer=null,torchState=false;
+let photicSource="screen",photicProg="none",photicLblTimer=null,torchTrack=null,torchTimer=null,torchState=false;
 async function torchStart(){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
@@ -732,6 +754,8 @@ function photicMsg(t){const el=$("photicMsg");if(el){el.textContent=t||"";el.cla
 function setPhoticSrcUI(){const r=$("photicSrcRow");if(r)r.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.s===photicSource));}
 function startPhotic(){
   if(!photicEl)photicEl=$("photic");
+  photicT0=performance.now(); // horloge de seance, valable ecran ET flash
+  clearInterval(photicLblTimer);photicLblTimer=setInterval(updatePhoticHzLbl,1000);
   if(photicSource==="torch"){
     photicEl.style.transition="";photicEl.style.opacity=0;
     photicMsg("Activation du flash, autorise la camera si l'app le demande.");
@@ -743,14 +767,15 @@ function startPhotic(){
   }
   photicMsg("");
   photicEl.style.transition="";photicEl.style.background=photicColor;photicEl.style.filter="brightness("+photicBrightness()+")";
-  photicT0=performance.now();cancelAnimationFrame(photicRAF);
+  cancelAnimationFrame(photicRAF);
   photicRAF=requestAnimationFrame(photicFrame);
 }
 function stopPhotic(){
   cancelAnimationFrame(photicRAF);photicRAF=null;torchStop();
+  clearInterval(photicLblTimer);photicLblTimer=null;
   if(photicEl){photicEl.style.transition="opacity .4s";photicEl.style.opacity=0;}
 }
-function updatePhoticHzLbl(){const el=$("photicHzLbl");if(!el)return;const v=photicFollow?photicHz():photicFreq;el.textContent=(Math.round(v*10)/10)+" Hz";}
+function updatePhoticHzLbl(){const el=$("photicHzLbl");if(!el)return;el.textContent=(Math.round(photicHz()*10)/10)+" Hz";}
 function enablePhotic(on){
   photicOn=on;$("tgPhotic").classList.toggle("on",on);$("photicCtl").classList.toggle("hide",!on);
   if(on){if(playing)startPhotic();}else stopPhotic();
@@ -760,13 +785,23 @@ function buildPhoticColors(){
   $("photicColors").innerHTML=PHOTIC_COLORS.map(([c,n])=>`<button class="chip pchip ${c===photicColor?'on':''}" data-c="${c}" style="--pc:${c}">${n}</button>`).join("");
   $("photicColors").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{photicColor=b.dataset.c;$("photicColors").querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===b));if(photicEl)photicEl.style.background=photicColor;saveSettings();});
 }
+function setPhoticProgUI(){
+  const on=photicProg&&photicProg!=="none";
+  const r=$("photicProgs");if(r)r.querySelectorAll(".chip").forEach(b=>b.classList.toggle("on",b.dataset.p===photicProg));
+  $("photicFreqRow").classList.toggle("photic-dim",!!on);
+  $("tgPhoticFollow").classList.toggle("photic-dim",!!on);
+}
+function buildPhoticProgs(){
+  $("photicProgs").innerHTML=PHOTIC_PROG_LIST.map(([k,n])=>`<button class="chip ${k===photicProg?'on':''}" data-p="${k}">${n}</button>`).join("");
+  $("photicProgs").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{photicProg=b.dataset.p;setPhoticProgUI();if(photicOn&&playing)photicT0=performance.now();updatePhoticHzLbl();saveSettings();});
+}
 function initPhoticUI(){
   photicEl=$("photic");
   $("tgPhoticFollow").classList.toggle("on",photicFollow);
   $("photicFreq").value=photicFreq;
   $("photicInt").value=photicInt;
   $("photicWaveRow").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.w===photicWave));
-  setPhoticSrcUI();
+  setPhoticSrcUI();buildPhoticProgs();setPhoticProgUI();
   $("tgPhotic").classList.toggle("on",photicOn);$("photicCtl").classList.toggle("hide",!photicOn);
   buildPhoticColors();updatePhoticHzLbl();
 }
@@ -801,6 +836,7 @@ function applySaved(){
   if(typeof s.photicColor==="string")photicColor=s.photicColor;
   if(s.photicInt!=null)photicInt=Math.max(10,Math.min(100,+s.photicInt));
   if(s.photicSource==="torch"||s.photicSource==="screen")photicSource=s.photicSource;
+  if(typeof s.photicProg==="string"&&PHOTIC_PROGS[s.photicProg])photicProg=s.photicProg;
   if(s.photicOn&&photicConsent)photicOn=true;
   if(s.catKey&&CATS[s.catKey]){catKey=s.catKey;idx=Math.min(s.idx||0,CATS[catKey].items.length-1);}
   if(s.ondesMode)ondesMode=s.ondesMode;if(Array.isArray(s.ambKeys))ambKeys=s.ambKeys.slice(0,2);else if(s.ambKey&&s.ambKey!=="none")ambKeys=[s.ambKey];if(s.breathKey&&BREATH[s.breathKey])breathKey=s.breathKey;
