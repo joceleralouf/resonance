@@ -200,9 +200,25 @@
     .orb,.orb.inhale{transition:box-shadow .8s,background .8s;transform:scale(.95)}
     body::before{animation:none}
   }
+
+  /* Lumière pulsée (effet hypnagogique type Dreamachine) */
+  #photic{position:fixed;inset:0;z-index:9000;pointer-events:none;opacity:0;background:#e8c77a;will-change:opacity}
+  .photic-tag{font-size:9px;letter-spacing:.12em;color:var(--glow);border:1px solid var(--glow-soft);border-radius:999px;padding:2px 8px;text-transform:uppercase}
+  .photic-warn{border:1px solid rgba(255,120,90,.45);background:rgba(255,90,60,.07);border-radius:14px;padding:14px;margin-top:12px}
+  .photic-warn .pw-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#ff9a82;margin-bottom:7px}
+  .photic-warn p{font-size:12px;color:var(--text);line-height:1.55;opacity:.9}
+  .photic-warn .pw-row{display:flex;gap:8px;margin-top:13px}
+  .photic-warn button{flex:1;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;padding:10px 0;border-radius:10px;cursor:pointer;transition:.2s}
+  .photic-warn .pw-ok{border-color:#ff8a6e;color:#ffd9cd;background:rgba(255,90,60,.14)}
+  .photic-hz{font-size:12px;color:var(--text);font-variant-numeric:tabular-nums;min-width:54px;text-align:right;flex:0 0 auto}
+  .photic-dim{opacity:.4;pointer-events:none}
+  .pchip{padding-left:30px}
+  .pchip::before{content:"";position:absolute;left:11px;top:50%;transform:translateY(-50%);width:11px;height:11px;border-radius:50%;background:var(--pc);box-shadow:0 0 6px var(--pc)}
+  #photicColors .chip{position:relative}
 </style>
 </head>
 <body>
+<div id="photic"></div>
 <div id="ambfx"></div>
 <div class="app" id="app">
   <header>
@@ -262,6 +278,26 @@
       <div class="sec-h">Guidage</div>
       <p class="hint">Un repère sonore doux à chaque temps, pour suivre les yeux fermés. <b>Doux</b> est une nappe chaude qui gonfle puis se retire. <b>Cloche</b> sonne un timbre léger. La voix dépend des voix installées sur ton téléphone.</p>
       <div class="chips" id="cueSel"></div>
+    </div>
+
+    <div class="sec" id="photicSec">
+      <div class="sec-h">Lumière pulsée <span class="photic-tag">hypnagogie</span></div>
+      <p class="hint">Effet façon <b>Dreamachine</b> : la lumière clignote à la fréquence des ondes, <b>yeux fermés</b>, pour induire un état hypnagogique (images mentales, motifs colorés). <b>Épilepsie / photosensibilité : ne pas utiliser.</b></p>
+      <div class="toggles">
+        <div class="tg" id="tgPhotic"><span>Activer la lumière</span><div class="sw"></div></div>
+        <div class="tg on" id="tgPhoticFollow"><span>Suivre les ondes</span><div class="sw"></div></div>
+      </div>
+      <div id="photicWarn" class="photic-warn hide">
+        <div class="pw-title">Avertissement</div>
+        <p>La lumière clignotante peut déclencher des crises chez les personnes photosensibles ou épileptiques. Ne pas utiliser en cas d'antécédent de crise. Arrête immédiatement en cas de vertige, gêne ou mal de tête. Yeux fermés, écran à bonne distance, pièce peu éclairée. Déconseillé pendant la grossesse et aux mineurs sans avis médical.</p>
+        <div class="pw-row"><button class="pw-no" id="photicCancel">Annuler</button><button class="pw-ok" id="photicOk">J'ai compris, activer</button></div>
+      </div>
+      <div id="photicCtl" class="hide">
+        <div class="row" id="photicFreqRow"><label>Cadence</label><input type="range" id="photicFreq" min="1" max="24" step="0.5" value="10"><span class="photic-hz" id="photicHzLbl">10 Hz</span></div>
+        <div class="seg" id="photicWaveRow"><button data-w="soft" class="on">Doux</button><button data-w="strobe">Stroboscope</button></div>
+        <div class="chips" id="photicColors" style="margin-top:10px"></div>
+        <div class="row"><label>Intensité</label><input type="range" id="photicInt" min="10" max="100" value="55"></div>
+      </div>
     </div>
 
     <div class="sec">
@@ -340,6 +376,7 @@ const PROGRAMS={
 /* ===================== État ===================== */
 let catKey="solfege",idx=4,playing=false,ondesMode="casque",ambKeys=[],breathKey="calme",cueMode="soft",freeFreq=220;
 let wakeOn=false;
+let photicOn=false,photicFollow=true,photicFreq=10,photicWave="soft",photicColor="#e8c77a",photicInt=55,photicConsent=false,photicRAF=null,photicEl=null,photicT0=0;
 let progKey=null,progStep=0,progStepTimer=null;
 let ctx,master,shaper,toneBus,ambBus,cueBus;
 let WHITE,PINK,BROWN,curGlow="#e8c77a";
@@ -353,6 +390,7 @@ function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function saveSettings(){lsSet(SKEY,{catKey,idx,ondesMode,ambKeys,breathKey,cueMode,progKey,wakeOn,
   vol:$("vol").value,volAmb:$("volAmb").value,volCue:$("volCue").value,ambRate:$("ambRate").value,freeFreq,
+  photicOn,photicFollow,photicFreq,photicWave,photicColor,photicInt,photicConsent,
   bStart:$("tgStart").classList.contains("on"),bEnd:$("tgEnd").classList.contains("on"),bBowls:$("tgBowls").classList.contains("on")});}
 
 /* ===================== Statistiques ===================== */
@@ -394,6 +432,7 @@ function paint(){
   $("chips").style.display=(c.type==="none"||c.type==="free")?"none":"flex";
   $("chips").innerHTML=c.items.map((x,i)=>`<button class="chip ${i===idx?'on':''}" data-i="${i}">${c.type==="noise"?x.n:(c.type==="binaural"?x.n:x.f+" Hz")}</button>`).join("");
   $("chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{idx=+b.dataset.i;paint();saveSettings();if(playing&&!progKey)restartTone();});
+  updatePhoticHzLbl();
 }
 function buildTabs(){
   $("tabs").innerHTML=Object.entries(CATS).map(([k,v])=>`<button class="tab ${k===catKey?'on':''}" data-k="${k}">${v.label}</button>`).join("");
@@ -623,6 +662,7 @@ function start(){
     const act=$("timer").querySelector(".tbtn.on"),m=+act.dataset.m;if(m)armCountdown(m*60);
   }
   playing=true;app.classList.add("playing");setIcon(true);runBreath();startViz();
+  if(photicOn)startPhotic();
   if($("tgBowls").classList.contains("on"))scheduleBowls();
 }
 function stop(endBell){
@@ -635,7 +675,7 @@ function stop(endBell){
   const dead=toneNodes.slice(),acts=Object.values(ambActive);setTimeout(()=>{dead.forEach(n=>{try{n.stop()}catch(e){}});acts.forEach(a=>{try{a.stop()}catch(e){}});},1000);
   toneNodes=[];ambActive={};playing=false;app.classList.remove("playing");setIcon(false);stopBreath();clearCountdown();
   if('speechSynthesis' in window)try{speechSynthesis.cancel()}catch(e){}
-  stopSilent();relWake();clearBowls();
+  stopSilent();relWake();clearBowls();stopPhotic();
   if(progKey)renderPhases(PROGRAMS[progKey],-1);
   recordSession(elapsed);
 }
@@ -646,7 +686,7 @@ function setIcon(p){$("ico").innerHTML=p?'<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>
 /* ===================== Moteur de programme ===================== */
 function startProgram(){const p=PROGRAMS[progKey];progStep=0;armCountdown(progTotal(p));applyStep(p.steps[0]);renderPhases(p,0);scheduleNext(p);}
 function scheduleNext(p){const s=p.steps[progStep];progStepTimer=setTimeout(()=>{progStep++;if(progStep>=p.steps.length){stop(true);selectProgram(progKey);return;}applyStep(p.steps[progStep]);renderPhases(p,progStep);scheduleNext(p);},s.t*1000);}
-function applyStep(s){catKey=s.cat;ondesMode=s.mode||"casque";ambKeys=(s.amb&&s.amb!=="none")?[s.amb]:[];breathKey=s.breath;idx=Math.max(0,CATS[s.cat].items.findIndex(x=>x.f===s.f));applyStepPreview(s);restartTone();syncAmb();stopBreath();runBreath();}
+function applyStep(s){catKey=s.cat;ondesMode=s.mode||"casque";ambKeys=(s.amb&&s.amb!=="none")?[s.amb]:[];breathKey=s.breath;idx=Math.max(0,CATS[s.cat].items.findIndex(x=>x.f===s.f));applyStepPreview(s);restartTone();syncAmb();stopBreath();runBreath();updatePhoticHzLbl();}
 
 /* ===================== Respiration ===================== */
 function runBreath(){
@@ -695,6 +735,67 @@ $("freeFreq").oninput=()=>{freeFreq=+$("freeFreq").value;if(catKey==="libre"){$(
 function bindToggle(id,after){const el=$(id);el.onclick=()=>{el.classList.toggle("on");after&&after(el.classList.contains("on"));saveSettings();};}
 bindToggle("tgStart");bindToggle("tgEnd");bindToggle("tgBowls",v=>{if(v&&playing)scheduleBowls();else clearBowls();});
 bindToggle("tgWake",v=>{wakeOn=v;if(v&&playing)reqWake();else if(!v)relWake();});
+/* ===================== Lumière pulsée (Dreamachine) ===================== */
+const PHOTIC_COLORS=[["#e8c77a","Ambre"],["#ff5a4d","Rouge"],["#b07bff","Violet"],["#79c7d9","Cyan"],["#ffffff","Blanc"]];
+// fréquence visuelle effective : suit le battement des ondes si dispo, sinon le curseur. Plafonnée à 24 Hz (les écrans 60 Hz ne clignotent pas proprement au-delà).
+function photicHz(){
+  if(photicFollow){
+    let beat=(catKey==="ondes")?CATS.ondes.items[idx]?.f:null;
+    if(beat==null)beat=photicFreq;
+    if(beat>24)beat=beat/2; // Gamma 40 -> 20
+    return Math.max(1,Math.min(24,beat));
+  }
+  return photicFreq;
+}
+function photicFrame(now){
+  if(!photicOn||!photicEl){return;}
+  const f=photicHz(),phase=(((now-photicT0)/1000)*f)%1;
+  let v;
+  if(photicWave==="strobe")v=phase<0.5?1:0;
+  else v=0.5-0.5*Math.cos(2*Math.PI*phase); // sinus adouci 0..1
+  photicEl.style.opacity=(v*(photicInt/100)).toFixed(3);
+  photicRAF=requestAnimationFrame(photicFrame);
+}
+function startPhotic(){
+  if(!photicEl)photicEl=$("photic");
+  photicEl.style.transition="";photicEl.style.background=photicColor;
+  photicT0=performance.now();cancelAnimationFrame(photicRAF);
+  photicRAF=requestAnimationFrame(photicFrame);
+}
+function stopPhotic(){
+  cancelAnimationFrame(photicRAF);photicRAF=null;
+  if(photicEl){photicEl.style.transition="opacity .4s";photicEl.style.opacity=0;}
+}
+function updatePhoticHzLbl(){const el=$("photicHzLbl");if(!el)return;const v=photicFollow?photicHz():photicFreq;el.textContent=(Math.round(v*10)/10)+" Hz";}
+function enablePhotic(on){
+  photicOn=on;$("tgPhotic").classList.toggle("on",on);$("photicCtl").classList.toggle("hide",!on);
+  if(on){if(playing)startPhotic();}else stopPhotic();
+  updatePhoticHzLbl();saveSettings();
+}
+function buildPhoticColors(){
+  $("photicColors").innerHTML=PHOTIC_COLORS.map(([c,n])=>`<button class="chip pchip ${c===photicColor?'on':''}" data-c="${c}" style="--pc:${c}">${n}</button>`).join("");
+  $("photicColors").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{photicColor=b.dataset.c;$("photicColors").querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===b));if(photicEl)photicEl.style.background=photicColor;saveSettings();});
+}
+function initPhoticUI(){
+  photicEl=$("photic");
+  $("tgPhoticFollow").classList.toggle("on",photicFollow);
+  $("photicFreq").value=photicFreq;$("photicFreq").disabled=photicFollow;$("photicFreqRow").classList.toggle("photic-dim",photicFollow);
+  $("photicInt").value=photicInt;
+  $("photicWaveRow").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.w===photicWave));
+  $("tgPhotic").classList.toggle("on",photicOn);$("photicCtl").classList.toggle("hide",!photicOn);
+  buildPhoticColors();updatePhoticHzLbl();
+}
+$("tgPhotic").onclick=()=>{
+  if(!photicOn){if(!photicConsent){$("photicWarn").classList.remove("hide");return;}enablePhotic(true);}
+  else enablePhotic(false);
+};
+$("photicOk").onclick=()=>{photicConsent=true;$("photicWarn").classList.add("hide");enablePhotic(true);};
+$("photicCancel").onclick=()=>{$("photicWarn").classList.add("hide");};
+$("tgPhoticFollow").onclick=()=>{photicFollow=!photicFollow;$("tgPhoticFollow").classList.toggle("on",photicFollow);$("photicFreq").disabled=photicFollow;$("photicFreqRow").classList.toggle("photic-dim",photicFollow);updatePhoticHzLbl();saveSettings();};
+$("photicFreq").oninput=()=>{photicFreq=+$("photicFreq").value;updatePhoticHzLbl();saveSettings();};
+$("photicInt").oninput=()=>{photicInt=+$("photicInt").value;saveSettings();};
+$("photicWaveRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicWave=b.dataset.w;$("photicWaveRow").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));saveSettings();});
+
 function buildTimers(){
   $("timer").innerHTML=TIMERS.map((m,i)=>`<button class="tbtn ${i===0?'on':''}" data-m="${m}">${m?m+" min":"∞"}</button>`).join("");
   $("timer").querySelectorAll(".tbtn").forEach(b=>b.onclick=()=>{$("timer").querySelectorAll(".tbtn").forEach(t=>t.classList.toggle("on",t===b));const m=+b.dataset.m;if(playing&&m)armCountdown(m*60);else if(!m)clearCountdown();});
@@ -707,6 +808,13 @@ function applySaved(){
   $("tgStart").classList.toggle("on",s.bStart!==false);$("tgEnd").classList.toggle("on",s.bEnd!==false);$("tgBowls").classList.toggle("on",!!s.bBowls);
   if(s.cueMode&&["none","soft","chime","voice"].includes(s.cueMode))cueMode=s.cueMode;else cueMode="soft";
   if(s.wakeOn){wakeOn=true;$("tgWake").classList.add("on");}
+  if(s.photicConsent)photicConsent=true;
+  if(s.photicFollow===false)photicFollow=false;
+  if(s.photicFreq!=null)photicFreq=Math.max(1,Math.min(24,+s.photicFreq));
+  if(s.photicWave==="strobe"||s.photicWave==="soft")photicWave=s.photicWave;
+  if(typeof s.photicColor==="string")photicColor=s.photicColor;
+  if(s.photicInt!=null)photicInt=Math.max(10,Math.min(100,+s.photicInt));
+  if(s.photicOn&&photicConsent)photicOn=true;
   if(s.catKey&&CATS[s.catKey]){catKey=s.catKey;idx=Math.min(s.idx||0,CATS[catKey].items.length-1);}
   if(s.ondesMode)ondesMode=s.ondesMode;if(Array.isArray(s.ambKeys))ambKeys=s.ambKeys.slice(0,2);else if(s.ambKey&&s.ambKey!=="none")ambKeys=[s.ambKey];if(s.breathKey&&BREATH[s.breathKey])breathKey=s.breathKey;
   if(s.progKey&&PROGRAMS[s.progKey])progKey=s.progKey;
@@ -714,7 +822,7 @@ function applySaved(){
 
 /* ===================== Init ===================== */
 applySaved();
-buildTabs();buildMode();buildAmb();buildBreath();buildCue();buildTimers();buildPrograms();
+buildTabs();buildMode();buildAmb();buildBreath();buildCue();buildTimers();buildPrograms();initPhoticUI();
 if(progKey)selectProgram(progKey);else paint();
 setAmbFx((progKey&&!playing)?"none":(ambKeys[0]||"none"));
 updateStats();stopBreath();
