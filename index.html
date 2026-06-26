@@ -691,27 +691,30 @@ bindToggle("tgStart");bindToggle("tgEnd");bindToggle("tgBowls",v=>{if(v&&playing
 bindToggle("tgWake",v=>{wakeOn=v;if(v&&playing)reqWake();else if(!v)relWake();});
 /* ===================== Lumière pulsée (Dreamachine) ===================== */
 const PHOTIC_COLORS=[["#e8c77a","Ambre"],["#ff5a4d","Rouge"],["#b07bff","Violet"],["#79c7d9","Cyan"],["#ffffff","Blanc"]];
-/* Séances : suites de phases [hzDebut, hzFin, duree(s)]. Rampe lineaire si hzDebut!=hzFin. Bouclent.
-   Fondees sur la recherche flicker : 10 Hz = pic d'hallucinations, <10 Hz radial, 10-20 Hz spirale, rythme regulier. */
+/* Programmes : suites de phases [hzDebut, hzFin, duree(s)]. Rampe lineaire si hzDebut!=hzFin. Bouclent.
+   Bandes : Delta<4 sommeil, Theta 4-8 meditation/focus interne, Alpha 8-13 (pic 10) relaxation + hallucinations,
+   Beta 14-30 vigilance/concentration, Gamma ~40 attention/memoire (necessite ecran 120 Hz). Rythme regulier. */
 const PHOTIC_PROGS={
-  dream:{seg:[[10,10,600]]},                                            // Dreamachine authentique : 10 Hz fixe
-  monte:{seg:[[7,7,90],[7,10,120],[10,10,210],[10,12,90]]},             // montee douce vers et autour d'alpha
+  sommeil:{seg:[[8,8,120],[8,4,180],[4,2,240],[2,1.5,300]]},             // Delta : descente vers le sommeil
+  meditation:{seg:[[9,9,90],[9,6,150],[6,6,300],[6,5,120]]},            // Theta : ancrage meditatif, focus interne
+  dream:{seg:[[10,10,600]]},                                            // Alpha : Dreamachine, pic d'hallucinations
+  focus:{seg:[[10,10,60],[10,14,90],[14,18,150],[18,18,240],[18,15,90]]}, // Beta : montee vers la vigilance
+  gamma:{seg:[[40,40,600]]},                                            // Gamma 40 Hz : ecran 120 Hz requis
   morph:{seg:[[7.5,7.5,120],[7.5,10,90],[10,10,150],[10,16,120],[16,16,90],[16,10,90]]}, // radial -> spirale
-  vague:{seg:[[7,16,80],[16,7,80]]},                                    // balayage lent continu
-  profonde:{seg:[[10,10,180],[10,7,150],[7,6,210],[6,6,120]]}           // descente alpha -> theta, plus onirique
+  vague:{seg:[[7,16,80],[16,7,80]]}                                     // balayage lent continu
 };
-const PHOTIC_PROG_LIST=[["none","Aucune"],["dream","Dreamachine"],["monte","Montée"],["morph","Radial → Spirale"],["vague","Vague"],["profonde","Profonde"]];
+const PHOTIC_PROG_LIST=[["none","Aucune"],["sommeil","Sommeil · Delta"],["meditation","Méditation · Theta"],["dream","Dreamachine · Alpha"],["focus","Focus · Beta"],["gamma","Cognition · Gamma 40"],["morph","Radial → Spirale"],["vague","Vague"]];
 function photicSessionHz(el,prog){
   const segs=PHOTIC_PROGS[prog].seg;let total=0;for(const s of segs)total+=s[2];
   let t=el%total;
   for(const s of segs){if(t<s[2])return s[0]+(s[1]-s[0])*(t/s[2]);t-=s[2];}
   return segs[segs.length-1][1];
 }
-// fréquence visuelle effective : séance > suivi des ondes > curseur. Plafonnée à 24 Hz (les écrans 60 Hz ne clignotent pas proprement au-delà).
+// fréquence visuelle effective : programme > suivi des ondes > curseur.
 function photicHz(){
   if(photicProg&&photicProg!=="none"){
     const el=playing?(performance.now()-photicT0)/1000:0;
-    return Math.max(1,Math.min(24,photicSessionHz(el,photicProg)));
+    return Math.max(1,Math.min(48,photicSessionHz(el,photicProg)));
   }
   if(photicFollow){
     let beat=(catKey==="ondes")?CATS.ondes.items[idx]?.f:null;
@@ -732,7 +735,7 @@ function photicFrame(now){
   photicRAF=requestAnimationFrame(photicFrame);
 }
 /* ---- Flash du telephone (torch). Android Chrome uniquement, iOS ne l'expose pas au web ---- */
-let photicSource="screen",photicProg="none",photicLblTimer=null,torchTrack=null,torchTimer=null,torchState=false;
+let photicSource="screen",photicProg="none",photicLblTimer=null,photicRefresh=60,torchTrack=null,torchTimer=null,torchState=false;
 async function torchStart(){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
@@ -752,6 +755,14 @@ function torchLoop(){
 function torchStop(){clearTimeout(torchTimer);torchTimer=null;if(torchTrack){torchSet(false);try{torchTrack.stop();}catch(e){}torchTrack=null;}torchState=false;}
 function photicMsg(t){const el=$("photicMsg");if(el){el.textContent=t||"";el.classList.toggle("hide",!t);}}
 function setPhoticSrcUI(){const r=$("photicSrcRow");if(r)r.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.s===photicSource));}
+function photicProgNote(){
+  if(photicProg==="gamma"){
+    if(photicSource==="torch"){photicMsg("Gamma 40 Hz impossible au flash (plafond 6 Hz). Passe la source sur Écran.");return;}
+    if(photicRefresh<90){photicMsg("Gamma 40 Hz : ton écran tourne à ~"+photicRefresh+" Hz, le rendu sera approximatif. Fidèle seulement sur écran 120 Hz.");return;}
+    photicMsg("Gamma 40 Hz : écran 120 Hz détecté, rendu correct.");return;
+  }
+  photicMsg("");
+}
 function startPhotic(){
   if(!photicEl)photicEl=$("photic");
   photicT0=performance.now(); // horloge de seance, valable ecran ET flash
@@ -765,7 +776,7 @@ function startPhotic(){
     });
     return;
   }
-  photicMsg("");
+  photicProgNote();
   photicEl.style.transition="";photicEl.style.background=photicColor;photicEl.style.filter="brightness("+photicBrightness()+")";
   cancelAnimationFrame(photicRAF);
   photicRAF=requestAnimationFrame(photicFrame);
@@ -793,7 +804,7 @@ function setPhoticProgUI(){
 }
 function buildPhoticProgs(){
   $("photicProgs").innerHTML=PHOTIC_PROG_LIST.map(([k,n])=>`<button class="chip ${k===photicProg?'on':''}" data-p="${k}">${n}</button>`).join("");
-  $("photicProgs").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{photicProg=b.dataset.p;setPhoticProgUI();if(photicOn&&playing)photicT0=performance.now();updatePhoticHzLbl();saveSettings();});
+  $("photicProgs").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{photicProg=b.dataset.p;setPhoticProgUI();if(photicOn&&playing)photicT0=performance.now();photicProgNote();updatePhoticHzLbl();saveSettings();});
 }
 function initPhoticUI(){
   photicEl=$("photic");
@@ -815,7 +826,9 @@ $("tgPhoticFollow").onclick=()=>{photicFollow=!photicFollow;$("tgPhoticFollow").
 $("photicFreq").oninput=()=>{photicFreq=+$("photicFreq").value;if(photicFollow){photicFollow=false;$("tgPhoticFollow").classList.remove("on");}updatePhoticHzLbl();saveSettings();};
 $("photicInt").oninput=()=>{photicInt=+$("photicInt").value;if(photicEl&&photicSource==="screen")photicEl.style.filter="brightness("+photicBrightness()+")";saveSettings();};
 $("photicWaveRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicWave=b.dataset.w;$("photicWaveRow").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));saveSettings();});
-$("photicSrcRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicSource=b.dataset.s;setPhoticSrcUI();saveSettings();if(photicOn&&playing){stopPhotic();startPhotic();}});
+$("photicSrcRow").querySelectorAll("button").forEach(b=>b.onclick=()=>{photicSource=b.dataset.s;setPhoticSrcUI();saveSettings();if(photicOn&&playing){stopPhotic();startPhotic();}else photicProgNote();});
+// estimation du taux de rafraichissement de l'ecran (pour avertir sur le gamma 40 Hz)
+(function(){let n=0,acc=0,last=0;function s(now){if(last){const d=now-last;if(d>0&&d<40){acc+=d;n++;}}last=now;if(n<24)requestAnimationFrame(s);else photicRefresh=Math.round(1000/(acc/n));}requestAnimationFrame(s);})();
 
 function buildTimers(){
   $("timer").innerHTML=TIMERS.map((m,i)=>`<button class="tbtn ${i===0?'on':''}" data-m="${m}">${m?m+" min":"∞"}</button>`).join("");
